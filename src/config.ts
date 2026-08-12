@@ -66,6 +66,17 @@ export const config = {
   // Cost guard 2: skip the review when a PR's changed lines (additions +
   // deletions) exceed this. 0 = no limit (default = current behavior).
   maxDiffLines: Number(optional("MAX_DIFF_LINES", "0")),
+
+  // When a review finds no issues, leave a positive sign-off so the author
+  // knows the bot ran (instead of silence):
+  //   "comment" (default) — post a COMMENT review saying it's clean
+  //   "approve"           — submit a formal APPROVE review (heads-up: this can
+  //                         satisfy required-review branch protection)
+  //   "off"               — stay silent when clean (original behavior)
+  cleanReviewMode: ((): "comment" | "approve" | "off" => {
+    const v = optional("CLEAN_REVIEW_MODE", "comment").toLowerCase();
+    return v === "approve" || v === "off" ? v : "comment";
+  })(),
   // Max concurrent aster runs on this instance.
   concurrency: Number(optional("REVIEW_CONCURRENCY", "2")),
   // Coalesce rapid pushes to the same PR within this window (ms).

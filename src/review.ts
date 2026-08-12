@@ -109,6 +109,15 @@ export async function runReview(job: ReviewJob): Promise<void> {
     console.log(
       `[review] ${label} done in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`,
     );
+
+    // aster prints "Posted N comment(s)" when it found issues; anything else
+    // (e.g. "Nothing posted.") means the PR came back clean. In that case,
+    // leave a positive sign-off so the author knows the bot actually ran.
+    const posted = /Posted\s+(\d+)\s+comment/i.exec(`${stdout}\n${stderr}`);
+    const postedCount = posted ? Number(posted[1]) : 0;
+    if (postedCount === 0 && config.cleanReviewMode !== "off") {
+      await postCleanSignoff(octokit, job, config.cleanReviewMode);
+    }
   } catch (err) {
     // execFile rejects on non-zero exit, timeout, or spawn failure.
     const e = err as Error & { stdout?: string; stderr?: string; killed?: boolean };
@@ -120,5 +129,41 @@ export async function runReview(job: ReviewJob): Promise<void> {
       }: ${e.message}`,
     );
     throw err;
+  }
+}
+
+type InstallationOctokit = Awaited<ReturnType<App["getInstallationOctokit"]>>;
+
+/**
+ * Leave a positive review when a PR comes back clean, so the author sees the
+ * bot ran. `approve` submits a formal APPROVE; `comment` posts a neutral note.
+ */
+async function postCleanSignoff(
+  octokit: InstallationOctokit,
+  job: ReviewJob,
+  mode: "comment" | "approve",
+): Promise<void> {
+  const event = mode === "approve" ? "APPROVE" : "COMMENT";
+  const body =
+    "✅ **aster** reviewed this PR and found no high-confidence issues.";
+  try {
+    await octokit.request(
+      "POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+      {
+        owner: job.owner,
+        repo: job.repo,
+        pull_number: job.prNumber,
+        event,
+        body,
+      },
+    );
+    console.log(
+      `[review] ${job.owner}/${job.repo}#${job.prNumber} clean — posted ${event} sign-off`,
+    );
+  } catch (err) {
+    console.error(
+      `[review] ${job.owner}/${job.repo}#${job.prNumber} clean sign-off failed:`,
+      err,
+    );
   }
 }

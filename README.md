@@ -208,6 +208,14 @@ All config is env vars — see [`.env.example`](.env.example). Key ones:
   exceed this, posting a "too large, please split" note instead of a review.
   Caps the worst-case cost of any single review. Try `1500`.
 
+**Clean PRs:**
+
+- `CLEAN_REVIEW_MODE` (default `comment`) — what to do when a review finds no
+  issues, so the author knows the bot ran instead of seeing silence: `comment`
+  posts a "no issues found" note, `approve` submits a formal **APPROVE** review
+  (⚠️ can satisfy required-review branch protection — use deliberately), `off`
+  stays silent.
+
 > Model IDs are **OpenRouter slugs** — confirm current names at
 > <https://openrouter.ai/models>. The defaults are reasonable starting points,
 > not guaranteed-current IDs.
