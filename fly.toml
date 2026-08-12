@@ -1,6 +1,6 @@
 # Fly.io config. Run `fly launch --no-deploy` once to claim an app name/region,
 # then set secrets (see README) and `fly deploy`.
-app = "aster-pr-app"
+app = "aster-pr-varscon"
 primary_region = "iad"
 
 [build]

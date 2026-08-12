@@ -167,12 +167,25 @@ Deploy:
 fly deploy
 ```
 
+**⚠️ Run on exactly one machine.** Fly's default deploy creates **2** machines for
+high availability — but this app keeps its review queue **in memory** (debounce,
+concurrency cap, and per-PR dedupe all live in `src/queue.ts`). Two machines don't
+share that state, so a single PR's webhook events can land on different machines →
+**duplicate reviews and double the OpenRouter cost**. Scale to one machine right
+after deploying, and keep it there until the queue is moved to a shared store
+(Redis/BullMQ — see [Scaling](#scaling--hardening-later)):
+
+```bash
+fly scale count 1 --app <app> --yes
+```
+
 Grab the URL (`https://<app>.fly.dev`) and put
 `https://<app>.fly.dev/api/github/webhooks` back into the App's **Webhook URL**.
 
 > **Note:** `fly.toml` sets `auto_stop_machines = false` / `min_machines_running = 1`
 > on purpose — reviews run in the background *after* the webhook is acked, so the
 > machine must stay up. This means ~1 always-on `shared-cpu-1x` machine of cost.
+> Combined with the single-machine rule above: **one always-on machine, no more.**
 
 ### Railway alternative
 Railway works too: new project → deploy this repo (it uses the `Dockerfile`) →
@@ -256,9 +269,11 @@ Or skip local aster entirely and just run the whole thing in Docker:
 
 ## Scaling & hardening (later)
 
-- **Durable queue:** `src/queue.ts` is in-memory (fine for one instance). For
-  multiple instances or crash-safe delivery, swap it for BullMQ + Redis — the
-  `enqueueReview` API stays the same.
+- **Single-instance constraint → durable queue:** `src/queue.ts` is in-memory, so
+  the app **must run on exactly one machine** (see the deploy step). To scale
+  horizontally (or get crash-safe delivery), move the queue to a shared store —
+  swap it for BullMQ + Redis; the `enqueueReview` API stays the same. Only then is
+  it safe to raise `fly scale count` / `min_machines_running` above 1.
 - **Deeper reviews:** this runs aster in remote `--pr` mode (diff + fetched file
   context, no clone). For whole-repo indexing (aster's SQLite/FTS retrieval),
   add a shallow `git clone` of the PR head before running aster in that dir.
