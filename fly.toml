@@ -1,0 +1,26 @@
+# Fly.io config. Run `fly launch --no-deploy` once to claim an app name/region,
+# then set secrets (see README) and `fly deploy`.
+app = "aster-pr-app"
+primary_region = "iad"
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # IMPORTANT: keep the machine running. Reviews execute in the background AFTER
+  # the webhook is acked, so a stopped machine would kill in-flight reviews.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

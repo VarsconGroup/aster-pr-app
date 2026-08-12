@@ -1,0 +1,11 @@
+# For local runs or self-hosting outside Fly.io. Put your values in .env first.
+# For local webhook testing, expose the port with a tunnel (e.g. `cloudflared
+# tunnel --url http://localhost:8080` or `smee`) and use that URL as the App's
+# webhook URL.
+services:
+  app:
+    build: .
+    env_file: .env
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
